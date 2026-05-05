@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  admin
+  user
+}
+
+enum ProductStatus {
+  active
+  inactive
+  out_of_stock
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+  expired
+}
+
+// ============================================
+// INDOREGION
+// ============================================
+
+model Province {
+  id        Int      @id @default(autoincrement())
+  name      String
+  cities    City[]
+  addresses Address[]
+
+  @@map("provinces")
+}
+
+model City {
+  id         Int      @id @default(autoincrement())
+  provinceId Int
+  name       String
+  type       String
+  province   Province   @relation(fields: [provinceId], references: [id])
+  districts  District[]
+  addresses  Address[]
+
+  @@map("cities")
+}
+
+model District {
+  id         Int      @id @default(autoincrement())
+  cityId     Int
+  name       String
+  postalCode String
+  city       City      @relation(fields: [cityId], references: [id])
+  addresses  Address[]
+
+  @@map("districts")
+}
+
+// ============================================
+// USER & AUTENTIKASI
+// ============================================
+
+model User {
+  id                 Int                 @id @default(autoincrement()) @map("id_user")
+  name               String
+  email              String              @unique
+  password           String
+  phone              String?
+  avatar             String?
+  role               Role                @default(user)
+  isVerified         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  emailVerifications EmailVerification[]
+  addresses          Address[]
+  products           Product[]
+  carts              Cart[]
+  orders             Order[]
+  reviews            Review[]
+  notifications      Notification[]
+
+  @@map("users")
+}
+
+model EmailVerification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+// ============================================
+// ALAMAT
+// ============================================
+
+model Address {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  provinceId Int
+  cityId     Int
+  districtId Int
+  label      String
+  recipient  String
+  phone      String
+  detail     String
+  isDefault  Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  province   Province @relation(fields: [provinceId], references: [id])
+  city       City     @relation(fields: [cityId], references: [id])
+  district   District @relation(fields: [districtId], references: [id])
+  orders     Order[]
+
+  @@map("addresses")
+}
+
+// ============================================
+// PRODUK
+// ============================================
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  slug     String    @unique
+  icon     String?
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id           Int            @id @default(autoincrement())
+  sellerId     Int
+  categoryId   Int
+  name         String
+  slug         String         @unique
+  description  String
+  price        Decimal        @db.Decimal(12, 2)
+  stock        Int            @default(0)
+  originCity   String
+  status       ProductStatus  @default(active)
+  createdAt    DateTime       @default(now())
+  seller       User           @relation(fields: [sellerId], references: [id])
+  category     Category       @relation(fields: [categoryId], references: [id])
+  images       ProductImage[]
+  carts        Cart[]
+  orderItems   OrderItem[]
+  reviews      Review[]
+
+  @@map("products")
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  imageUrl  String
+  isPrimary Boolean @default(false)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+// ============================================
+// KERANJANG
+// ============================================
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("carts")
+}
+
+// ============================================
+// ORDER
+// ============================================
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  addressId    Int
+  orderCode    String      @unique
+  status       OrderStatus @default(pending)
+  subtotal     Decimal     @db.Decimal(12, 2)
+  shippingCost Decimal     @db.Decimal(12, 2)
+  total        Decimal     @db.Decimal(12, 2)
+  orderedAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id])
+  address      Address     @relation(fields: [addressId], references: [id])
+  items        OrderItem[]
+  payment      Payment?
+  reviews      Review[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int
+  productId   Int
+  productName String
+  price       Decimal @db.Decimal(12, 2)
+  quantity    Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// ============================================
+// PAYMENT
+// ============================================
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @unique
+  method        String
+  amount        Decimal       @db.Decimal(12, 2)
+  status        PaymentStatus @default(pending)
+  transactionId String?
+  snapToken     String?
+  paidAt        DateTime?
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ============================================
+// REVIEW
+// ============================================
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  orderId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
+
+  @@unique([userId, productId, orderId])
+  @@map("reviews")
+}
+
+// ============================================
+// NOTIFIKASI
+// ============================================
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
