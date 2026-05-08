@@ -16,13 +16,13 @@ import reportRoutes from "./modules/report/report.routes";
 import { errorResponse } from "./utils/response";
 
 const app = express();
-const PORT = process.env.PORT || 3052;
+const PORT = process.env.PORT || 7860;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -36,7 +36,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
-  return errorResponse(res, 500, "Internal server error")
+  return errorResponse(res, 500, "Internal server error");
 });
 
 app.get("/", (req, res) => {
