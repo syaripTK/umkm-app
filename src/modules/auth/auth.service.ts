@@ -16,14 +16,12 @@ export const registerUser = async (
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) throw new Error("Email sudah terdaftar");
 
-  // Hash password agar berubah menjadi random string
   const hashed = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
     data: { name, email, password: hashed },
   });
 
-  // Buat token verifikasi
   const token = Math.random().toString(36).substring(2);
   await prisma.emailVerification.create({
     data: {
@@ -33,7 +31,6 @@ export const registerUser = async (
     },
   });
 
-  // kirim email verifikasi dengan token ini
   const { subject, html } = verificationEmailTemplate(name, token);
   await transporter.sendMail({
     from: `"UMKM App" <${process.env.EMAIL_USER}>`,
@@ -46,7 +43,6 @@ export const registerUser = async (
 };
 
 export const loginUser = async (email: string, password: string) => {
-  // Temukan user berdasarkan email yang ada di database
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error("Email atau password salah");
   if (!user.isVerified) throw new Error("Email belum diverifikasi");
