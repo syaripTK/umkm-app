@@ -46,7 +46,6 @@ export const registerUser = async (
 };
 
 export const loginUser = async (email: string, password: string) => {
-  // Temukan user berdasarkan email yang ada di database
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error("Email atau password salah");
   if (!user.isVerified) throw new Error("Email belum diverifikasi");
